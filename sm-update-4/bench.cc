@@ -124,6 +124,43 @@ test(ConvergenceTable & table,
     return result;
   };
 
+  const auto bps = [&](auto &vec1, auto &vec2, const std::string &label) {
+    return std::pair<double, double>{
+      run(label,
+          [&]() {
+            FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
+
+            for (unsigned int cell = 0; cell < matrix_free.n_cell_batches(); cell++)
+              {
+                phi.reinit(cell);
+                phi.gather_evaluate(vec1, true, false);
+
+                for (unsigned int q = 0; q < phi.n_q_points; q++)
+                  phi.submit_value(phi.get_value(q), q);
+
+                phi.integrate_scatter(true, false, vec2);
+              }
+          }),
+      run(label + "_comm", [&]() {
+        FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
+        matrix_free.template cell_loop<decltype(vec1), decltype(vec2)>(
+          [&](const auto &, auto &dst, const auto &src, const auto cells) {
+            for (unsigned int cell = cells.first; cell < cells.second; cell++)
+              {
+                phi.reinit(cell);
+                phi.gather_evaluate(src, true, false);
+
+                for (unsigned int q = 0; q < phi.n_q_points; q++)
+                  phi.submit_value(phi.get_value(q), q);
+
+                phi.integrate_scatter(true, false, dst);
+              }
+          },
+          vec1,
+          vec2);
+      })};
+  };
+
   // .. for LinearAlgebra::distributed::Vector
   const auto result_d = [&]() {
     using VectorType = LinearAlgebra::distributed::Vector<Number>;
@@ -138,40 +175,7 @@ test(ConvergenceTable & table,
                     Utilities::MPI::sum(vec1.get_partitioner()->n_ghost_indices(), comm));
 
     // apply mass matrix
-    return std::pair<double, double>{
-      run("L::D::V",
-          [&]() {
-            FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
-
-            for (unsigned int cell = 0; cell < matrix_free.n_cell_batches(); cell++)
-              {
-                phi.reinit(cell);
-                phi.gather_evaluate(vec1, true, false);
-
-                for (unsigned int q = 0; q < phi.n_q_points; q++)
-                  phi.submit_value(phi.get_value(q), q);
-
-                phi.integrate_scatter(true, false, vec2);
-              }
-          }),
-      run("L::D::V_comm", [&]() {
-        FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
-        matrix_free.template cell_loop<VectorType, VectorType>(
-          [&](const auto &, auto &dst, const auto &src, const auto cells) {
-            for (unsigned int cell = cells.first; cell < cells.second; cell++)
-              {
-                phi.reinit(cell);
-                phi.gather_evaluate(src, true, false);
-
-                for (unsigned int q = 0; q < phi.n_q_points; q++)
-                  phi.submit_value(phi.get_value(q), q);
-
-                phi.integrate_scatter(true, false, dst);
-              }
-          },
-          vec1,
-          vec2);
-      })};
+    return bps(vec1, vec2, "L:D:V");
   }();
 
   // .. for LinearAlgebra::SharedMPI::Vector
@@ -184,40 +188,7 @@ test(ConvergenceTable & table,
     matrix_free.initialize_dof_vector(vec2, comm_sm);
 
     // apply mass matrix
-    return std::pair<double, double>{
-      run("L::S::V",
-          [&]() {
-            FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
-
-            for (unsigned int cell = 0; cell < matrix_free.n_cell_batches(); cell++)
-              {
-                phi.reinit(cell);
-                phi.gather_evaluate(vec1, true, false);
-
-                for (unsigned int q = 0; q < phi.n_q_points; q++)
-                  phi.submit_value(phi.get_value(q), q);
-
-                phi.integrate_scatter(true, false, vec2);
-              }
-          }),
-      run("L::S::V_comm", [&]() {
-        FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
-        matrix_free.template cell_loop<VectorType, VectorType>(
-          [&](const auto &, auto &dst, const auto &src, const auto cells) {
-            for (unsigned int cell = cells.first; cell < cells.second; cell++)
-              {
-                phi.reinit(cell);
-                phi.gather_evaluate(src, true, false);
-
-                for (unsigned int q = 0; q < phi.n_q_points; q++)
-                  phi.submit_value(phi.get_value(q), q);
-
-                phi.integrate_scatter(true, false, dst);
-              }
-          },
-          vec1,
-          vec2);
-      })};
+    return bps(vec1, vec2, "L:S:V");
   }();
 
   table.add_value("speedup", result_s.first / result_d.first);
