@@ -239,7 +239,7 @@ main(int argc, char **argv)
   ConditionalOStream pcout(std::cout, rank == 0);
 
   // print help page if requested
-  if (std::string(argv[1]) == "--help")
+  if (argc == 1 || std::string(argv[1]) == "--help")
     {
       pcout << "mpirun -np 40 ./bench group_size dim degree n_refinements" << std::endl;
       return 0;

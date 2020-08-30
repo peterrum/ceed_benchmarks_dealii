@@ -47,7 +47,7 @@ typedef dealii::VectorizedArray<double, 1> VectorizedArrayType;
 //using VectorType = LinearAlgebra::distributed::Vector<double>;
 using VectorType = LinearAlgebra::SharedMPI::Vector<double>;
 
-template <int dim, int fe_degree, int n_q_points>
+template <int dim, int fe_degree, int n_q_points, typename VectorType>
 void
 test(const unsigned int s, const bool short_output)
 {
@@ -355,14 +355,17 @@ do_test(const int s_in, const bool compact_output)
       while ((8 + Utilities::fixed_power<dim>(fe_degree + 1)) * (1UL << s) <
              6000000ULL * Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
         {
-          test<dim, fe_degree, n_q_points>(s, compact_output);
+          std::cout << "L:d:V ";
+          test<dim, fe_degree, n_q_points, LinearAlgebra::distributed::Vector<double>>(s, compact_output);
+          std::cout << "L:s:V ";
+          test<dim, fe_degree, n_q_points, LinearAlgebra::SharedMPI::Vector<double>>(s, compact_output);
           ++s;
         }
       if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
         std::cout << std::endl << std::endl;
     }
   else
-    test<dim, fe_degree, n_q_points>(s_in, compact_output);
+    test<dim, fe_degree, n_q_points, LinearAlgebra::SharedMPI::Vector<double>>(s_in, compact_output);
 }
 
 
