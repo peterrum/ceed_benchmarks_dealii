@@ -77,12 +77,13 @@ test(ConvergenceTable & /*table*/,
   matrix_free.initialize_dof_vector(vec_sm, comm_sm);
 
 
-  const auto &sm_view = matrix_free.get_vector_partitioner(comm_sm)->get_sm_view();
+  // const auto &sm_view = matrix_free.get_vector_partitioner(comm_sm)->get_sm_view();
 
-  auto &dof_info = const_cast<internal::MatrixFreeFunctions::DoFInfo &>(matrix_free.get_dof_info());
+  // auto &dof_info = const_cast<internal::MatrixFreeFunctions::DoFInfo
+  // &>(matrix_free.get_dof_info());
 
-  for (auto &i : dof_info.dof_indices)
-    i = sm_view[i];
+  // for (auto &i : dof_info.dof_indices)
+  //  i = sm_view[i];
 
   using VectorType = LinearAlgebra::SharedMPI::Vector<Number>;
 

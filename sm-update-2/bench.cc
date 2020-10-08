@@ -174,41 +174,41 @@ test(ConvergenceTable & table,
   table.add_value("speedup", result_s / result_d);
   table.set_scientific("speedup", true);
 
-  // .. for LinearAlgebra::SharedMPI::Vector (skip communication)
-  const auto reduced =
-    [&](const std::string label, const bool do_ghost_value_update, const bool do_compress) {
-      using VectorType = LinearAlgebra::SharedMPI::Vector<Number>;
-
-      // create vectors
-      VectorType vec1(do_ghost_value_update, do_compress);
-      VectorType vec2(do_ghost_value_update, do_compress);
-      matrix_free.initialize_dof_vector(vec1, comm_sm);
-      matrix_free.initialize_dof_vector(vec2, comm_sm);
-
-      // apply mass matrix
-      return run(label, [&]() {
-        FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
-        matrix_free.template cell_loop<VectorType, VectorType>(
-          [&](const auto &, auto &dst, const auto &src, const auto cells) {
-            for (unsigned int cell = cells.first; cell < cells.second; cell++)
-              {
-                phi.reinit(cell);
-                phi.gather_evaluate(src, true, false);
-
-                for (unsigned int q = 0; q < phi.n_q_points; q++)
-                  phi.submit_value(phi.get_value(q), q);
-
-                phi.integrate_scatter(true, false, dst);
-              }
-          },
-          vec1,
-          vec2);
-      });
-    };
-
-  reduced("L::N::V::0", false, false);
-  reduced("L::N::V::1", true, false);
-  reduced("L::N::V::2", false, true);
+  //  // .. for LinearAlgebra::SharedMPI::Vector (skip communication)
+  //  const auto reduced =
+  //    [&](const std::string label, const bool do_ghost_value_update, const bool do_compress) {
+  //      using VectorType = LinearAlgebra::SharedMPI::Vector<Number>;
+  //
+  //      // create vectors
+  //      VectorType vec1(do_ghost_value_update, do_compress);
+  //      VectorType vec2(do_ghost_value_update, do_compress);
+  //      matrix_free.initialize_dof_vector(vec1, comm_sm);
+  //      matrix_free.initialize_dof_vector(vec2, comm_sm);
+  //
+  //      // apply mass matrix
+  //      return run(label, [&]() {
+  //        FEEvaluation<dim, degree, n_points_1d, 1, Number, VectorizedArrayType> phi(matrix_free);
+  //        matrix_free.template cell_loop<VectorType, VectorType>(
+  //          [&](const auto &, auto &dst, const auto &src, const auto cells) {
+  //            for (unsigned int cell = cells.first; cell < cells.second; cell++)
+  //              {
+  //                phi.reinit(cell);
+  //                phi.gather_evaluate(src, true, false);
+  //
+  //                for (unsigned int q = 0; q < phi.n_q_points; q++)
+  //                  phi.submit_value(phi.get_value(q), q);
+  //
+  //                phi.integrate_scatter(true, false, dst);
+  //              }
+  //          },
+  //          vec1,
+  //          vec2);
+  //      });
+  //    };
+  //
+  //  reduced("L::N::V::0", false, false);
+  //  reduced("L::N::V::1", true, false);
+  //  reduced("L::N::V::2", false, true);
 }
 
 template <int dim>
